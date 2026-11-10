@@ -1,0 +1,26 @@
+rules_version = '2';
+
+// Regras do banco: só os e-mails da lista podem ler e gravar.
+// Troque email-da-beatriz@gmail.com pelo e-mail Google da Beatriz (minúsculas) e publique no console do Firebase.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function liberado() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower() in [
+          'carlosh2000carlos@gmail.com',
+          'imadocuments2021@gmail.com',
+          'email-da-beatriz@gmail.com'
+        ];
+    }
+
+    match /casas/{casa} {
+      allow read, write: if liberado();
+
+      match /{colecao}/{item} {
+        allow read, write: if liberado();
+      }
+    }
+  }
+}

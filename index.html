@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Controle de Gastos</title>
+  <meta name="description" content="Controle de gastos do casal.">
+  <meta name="theme-color" content="#14213d">
+  <link rel="icon" href="assets/img/icone.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/app.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+</head>
+<body>
+  <div class="app" id="app">
+    <aside class="lateral" aria-label="Menu">
+      <div class="marca">
+        <img src="assets/img/icone.svg" alt="" width="32" height="32">
+        <div>
+          <strong>Controle de Gastos</strong>
+          <span id="usuario-atual">—</span>
+        </div>
+      </div>
+      <nav class="menu" id="menu">
+        <a href="#/painel" data-rota="painel"><span class="ic">◎</span>Painel</a>
+        <a href="#/lancamentos" data-rota="lancamentos"><span class="ic">≡</span>Lançamentos</a>
+        <a href="#/receitas" data-rota="receitas"><span class="ic">↑</span>Receitas</a>
+        <a href="#/fixas" data-rota="fixas"><span class="ic">↻</span>Contas fixas</a>
+        <a href="#/metas" data-rota="metas"><span class="ic">◆</span>Metas e orçamento</a>
+        <a href="#/assistente" data-rota="assistente"><span class="ic">✦</span>Assistente</a>
+        <a href="#/config" data-rota="config"><span class="ic">⚙</span>Configurações</a>
+      </nav>
+      <div class="sync" id="sync" title="Sincronização com a planilha">
+        <span class="ponto"></span><span id="sync-texto">Desconectado</span>
+      </div>
+    </aside>
+
+    <main class="principal">
+      <header class="topo">
+        <div class="mes-nav" id="mes-nav">
+          <button class="btn-icone" id="mes-ant" aria-label="Mês anterior">‹</button>
+          <h1 id="mes-titulo">—</h1>
+          <button class="btn-icone" id="mes-prox" aria-label="Próximo mês">›</button>
+        </div>
+        <div class="topo-acoes">
+          <button class="btn-icone" id="btn-atualizar" aria-label="Voltar para o mês atual" title="Voltar para o mês atual">⌂</button>
+          <button class="btn primario" id="btn-novo">+ Lançar</button>
+        </div>
+      </header>
+      <section id="conteudo" class="conteudo" aria-live="polite"></section>
+    </main>
+
+    <nav class="barra-baixo" id="barra-baixo" aria-label="Menu rápido">
+      <a href="#/painel" data-rota="painel"><span>◎</span>Painel</a>
+      <a href="#/lancamentos" data-rota="lancamentos"><span>≡</span>Gastos</a>
+      <button id="fab" class="fab" aria-label="Novo lançamento">+</button>
+      <a href="#/assistente" data-rota="assistente"><span>✦</span>Assistente</a>
+      <a href="#/mais" data-rota="mais"><span>☰</span>Mais</a>
+    </nav>
+  </div>
+
+  <div class="modal-fundo" id="modal-fundo" hidden>
+    <div class="modal" role="dialog" aria-modal="true" id="modal"></div>
+  </div>
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <script type="module" src="assets/js/app.js"></script>
+</body>
+</html>
