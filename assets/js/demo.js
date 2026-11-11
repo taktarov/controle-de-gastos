@@ -24,6 +24,14 @@ export const LISTAS_PADRAO = {
   formas: ['Crédito', 'Débito', 'PIX', 'Boleto', 'Transferência', 'Dinheiro'],
 };
 
+// Cartões de crédito do casal. Quando a forma de pagamento é "Crédito", só estes aparecem para escolher.
+// O valor gravado no lançamento é "Dono - Cartão" (ex.: "Carlos - C6").
+export const CARTOES = [
+  { dono: 'Carlos', cartoes: ['Itaú', 'C6'] },
+  { dono: 'Beatriz', cartoes: ['Cora', 'Itaú', 'Nubank'] },
+];
+export const LISTA_CARTOES = CARTOES.flatMap((g) => g.cartoes.map((c) => `${g.dono} - ${c}`));
+
 // gerador simples e repetível
 function sorteio(semente) {
   let s = semente;
@@ -37,7 +45,7 @@ export function demoInicial() {
   const lanc = [];
   const add = (ym, dia, categoria, subcategoria, descricao, total, extra = {}) => lanc.push({
     data: `${ym}-${String(dia).padStart(2, '0')}`, categoria, subcategoria, descricao, forma: extra.forma || 'Crédito',
-    total: Math.round(total * 100) / 100, parcelas: extra.parcelas || 1, status: extra.status || 'Pago', origem: extra.origem || 'Cartão A',
+    total: Math.round(total * 100) / 100, parcelas: extra.parcelas || 1, status: extra.status || 'Pago', origem: extra.origem ?? (r() < 0.6 ? 'Carlos - C6' : 'Beatriz - Nubank'),
   });
   const v = (base, faixa) => base + (r() - 0.5) * 2 * faixa;
 

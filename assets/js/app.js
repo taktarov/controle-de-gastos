@@ -7,6 +7,7 @@ import {
 } from './calc.js';
 import { analisarLancamento, analisarReceita, analiseCompleta, responderSemIA } from './assistente.js';
 import { destruirGraficos, graficoMeses, graficoCategorias, graficoParcelas } from './graficos.js';
+import { CARTOES, LISTA_CARTOES } from './demo.js';
 import {
   fmt, fmt0, pct, esc, dataBR, hojeISO, mesAtual, somarMeses, rotuloMes, rotuloMesLongo, paraNumero, round2,
   normalizar, temAviso,
@@ -621,7 +622,8 @@ function telaConfig() {
       <h2>Este aparelho</h2>
       <form id="fc" class="form-grade" style="margin-top:10px">
         <div class="campo"><label>Quem usa este aparelho</label><select name="titular"><option value="Eu" ${c.titular !== 'Esposa' ? 'selected' : ''}>${esc(n.Eu)}</option><option value="Esposa" ${c.titular === 'Esposa' ? 'selected' : ''}>${esc(n.Esposa)}</option></select></div>
-        <div class="campo"><label>Origem padrão dos gastos</label><input name="ultimaOrigem" value="${esc(c.ultimaOrigem || '')}" placeholder="Ex.: C6 5052"></div>
+        <div class="campo"><label>Cartão padrão neste aparelho</label>${seletorCartao(LISTA_CARTOES.includes(c.ultimoCartao) ? c.ultimoCartao : '', 'ultimoCartao', false).replace('Escolha o cartão…', 'Nenhum (escolher sempre)')}
+          <span class="ajuda">Já vem marcado nos gastos no crédito. Muda sozinho para o último cartão usado.</span></div>
         <div class="campo"><label>Nome para "Eu"</label><input name="nomeEu" value="${esc(n.Eu)}"></div>
         <div class="campo"><label>Nome para "Esposa"</label><input name="nomeEsposa" value="${esc(n.Esposa)}"></div>
         <div class="campo inteiro"><label>Chave da API Claude (opcional)</label><input name="chaveIA" type="password" value="${esc(c.chaveIA || '')}" placeholder="sk-ant-…" autocomplete="off">
@@ -654,7 +656,7 @@ function telaConfig() {
   $('#fc').onsubmit = (e) => {
     e.preventDefault();
     const d = Object.fromEntries(new FormData(e.target));
-    gravarCfg({ titular: d.titular, ultimaOrigem: d.ultimaOrigem, chaveIA: d.chaveIA.trim(), modeloIA: d.modeloIA.trim() || MODELO_IA_PADRAO, nomes: { Eu: d.nomeEu || 'Eu', Esposa: d.nomeEsposa || 'Esposa' } });
+    gravarCfg({ titular: d.titular, ultimoCartao: d.ultimoCartao || '', chaveIA: d.chaveIA.trim(), modeloIA: d.modeloIA.trim() || MODELO_IA_PADRAO, nomes: { Eu: d.nomeEu || 'Eu', Esposa: d.nomeEsposa || 'Esposa' } });
     toast('Configurações salvas neste aparelho.');
     render();
   };
@@ -706,11 +708,47 @@ function ligarSubcategorias(form, x) {
   preencher();
 }
 
+// Cartão sugerido num gasto novo: o último usado neste aparelho; se não houver, nenhum (escolha obrigatória).
+function cartaoPadrao() {
+  return LISTA_CARTOES.includes(st.cfg.ultimoCartao) ? st.cfg.ultimoCartao : '';
+}
+
+function seletorCartao(atual, nome = 'origem', obrigatorio = true) {
+  const antigo = atual && !LISTA_CARTOES.includes(atual)
+    ? `<optgroup label="Lançado antes"><option value="${esc(atual)}" selected>${esc(atual)}</option></optgroup>` : '';
+  const grupos = CARTOES.map((g) => `<optgroup label="${esc(g.dono)}">${g.cartoes.map((c) => {
+    const v = `${g.dono} - ${c}`;
+    return `<option value="${esc(v)}" ${v === atual ? 'selected' : ''}>${esc(v)}</option>`;
+  }).join('')}</optgroup>`).join('');
+  return `<select name="${nome}" ${obrigatorio ? 'required' : ''}><option value="">Escolha o cartão…</option>${grupos}${antigo}</select>`;
+}
+
+// O campo "origem" muda com a forma de pagamento: no crédito, só os cartões do casal; nas outras formas, texto livre.
+function ligarOrigem(form, x) {
+  const caixa = $('#campo-origem');
+  let textoLivre = LISTA_CARTOES.includes(x.origem) ? '' : (x.forma === 'Crédito' ? '' : x.origem);
+  let cartao = x.forma === 'Crédito' ? x.origem : cartaoPadrao();
+  const contas = [...new Set(st.dados.lancamentos.map((y) => y.origem)
+    .filter((o) => o && !LISTA_CARTOES.includes(o) && o !== 'Conta fixa' && !/^(C6|Itaú)\s\d{4}$/.test(o)))].sort();
+  const desenhar = () => {
+    if (form.forma.value === 'Crédito') {
+      caixa.innerHTML = `<label>Cartão de crédito</label>${seletorCartao(cartao)}`;
+      form.origem.onchange = () => { cartao = form.origem.value; };
+    } else {
+      caixa.innerHTML = `<label>Conta (opcional)</label><input name="origem" list="origens" value="${esc(textoLivre)}" placeholder="Ex.: Itaú conta corrente">
+        <datalist id="origens">${contas.map((o) => `<option value="${esc(o)}">`).join('')}</datalist>`;
+      form.origem.oninput = () => { textoLivre = form.origem.value; };
+    }
+  };
+  form.forma.addEventListener('change', desenhar);
+  desenhar();
+}
+
 function formLancamento(l = null) {
   const novo = !l;
   const d = st.dados;
-  const x = l || { data: hojeISO(), categoria: '', subcategoria: '', descricao: '', forma: 'Crédito', total: '', parcelas: 1, status: 'Pago', origem: st.cfg.ultimaOrigem || '' };
-  const origens = [...new Set(d.lancamentos.map((y) => y.origem).filter(Boolean))].sort();
+  const x = l || { data: hojeISO(), categoria: '', subcategoria: '', descricao: '', forma: 'Crédito', total: '', parcelas: 1, status: 'Pago', origem: '' };
+  if (novo) x.origem = cartaoPadrao();
   abrirModal(`
     ${novo ? '<div class="alternador" style="margin-bottom:14px"><button type="button" class="ativo">Gasto</button><button type="button" id="t-receita">Receita</button></div>' : ''}
     <h3>${novo ? 'Novo gasto' : 'Editar lançamento'}</h3>
@@ -721,9 +759,9 @@ function formLancamento(l = null) {
       <div class="campo"><label>Categoria</label><select name="categoria" required><option value="">Escolha…</option>${opcoes(d.categorias.map((c) => c.nome), x.categoria)}</select></div>
       <div class="campo"><label>Subcategoria</label><select name="subcategoria"></select></div>
       <div class="campo"><label>Forma de pagamento</label><select name="forma">${opcoes(d.formas, x.forma)}</select></div>
+      <div class="campo" id="campo-origem"></div>
       <div class="campo"><label>Nº de parcelas</label><input name="parcelas" type="number" min="1" max="48" value="${x.parcelas || 1}"><span class="ajuda" id="ajuda-parc"></span></div>
       <div class="campo"><label>Status</label><select name="status">${opcoes(['Pago', 'Pendente'], x.status || 'Pago')}</select></div>
-      <div class="campo"><label>Origem (cartão/conta)</label><input name="origem" list="origens" value="${esc(x.origem)}" placeholder="Ex.: C6 5052"><datalist id="origens">${origens.map((o) => `<option value="${esc(o)}">`).join('')}</datalist></div>
       ${l?.criadoPor ? `<p class="ajuda inteiro">Lançado por ${esc(l.criadoPor)}${l.alteradoPor ? ` · alterado por ${esc(l.alteradoPor)}` : ''}</p>` : ''}
       <div class="modal-acoes inteiro">
         ${novo ? '' : '<button type="button" class="btn perigo" id="b-apagar">Apagar</button>'}
@@ -734,6 +772,7 @@ function formLancamento(l = null) {
 
   const f = $('#fl');
   ligarSubcategorias(f, x);
+  ligarOrigem(f, x);
   const ajudaParc = () => {
     const n = Math.max(1, Number(f.parcelas.value) || 1);
     const t = paraNumero(f.total.value);
@@ -754,7 +793,7 @@ function formLancamento(l = null) {
       total: round2(paraNumero(v.total)), parcelas: Math.max(1, Math.round(Number(v.parcelas) || 1)), status: v.status, origem: v.origem.trim(),
     };
     if (!item.total) { toast('Informe o valor.', 'erro'); return; }
-    if (item.origem) gravarCfg({ ultimaOrigem: item.origem });
+    if (item.forma === 'Crédito' && LISTA_CARTOES.includes(item.origem)) gravarCfg({ ultimoCartao: item.origem });
     travarBotao('#b-salvar');
     try {
       const r = novo ? await st.api.addLancamento(item) : await st.api.editLancamento(l.id, item);
